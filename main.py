@@ -1,39 +1,60 @@
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
+import pandas as pd
 
 Base = declarative_base()
 
 
-class testTable(Base):
-    __tablename__ = 'testTable'
+class User(Base):
+    __tablename__ = 'user'
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    area_id = Column(Integer, ForeignKey('area.id'))
+    dist_id = Column(Integer, ForeignKey('dist.id'))
 
     def __repr__(self):
-        return f'<testTalbe {self.name}>'
+        return f'<User {self.name}>'
 
 
-class area(Base):
-    __tablename__ = 'area'
+class Dist(Base):
+    __tablename__ = 'dist'
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    users = relationship('testTable', backref="area")
+    city_id = Column(Integer, ForeignKey('city.id'))
+    users = relationship('User', backref="dist")
 
     def __repr__(self):
-        return f'<area {self.name}>'
+        return f'<Dist {self.name}>'
+
+
+class City(Base):
+    __tablename__ = 'city'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    districts = relationship('Dist', backref="city")
+
+    def __repr__(self):
+        return f'<City {self.name}>'
 
 
 engine = create_engine('sqlite:///F:/projects/sqltest/testDB.db')
 Session = sessionmaker(engine)
 
 if __name__ == '__main__':
+    # 连接
     s = Session()
-    xm = s.query(testTable).filter(testTable.name == 'xiaoming').one()
-    nj = s.query(area).filter(area.name == 'nanjing').one()
-    xm.area = nj
+    # 查询
+    xm = s.query(User).filter(User.name == 'xiaoming').one()
+    jiangning = s.query(Dist).filter(Dist.name == 'jiangning').one()
+    # 改写
+    xm.dist = jiangning
     s.add(xm)
     s.commit()
+    # pandas.read
+    query = s.query(User).filter(User.dist == jiangning)
+    df = pd.read_sql(query.statement, s.bind, index_col='id')
+    # in的用法
+    query = s.query(User).filter(User.name.in_(['xiaoming', 'xiaohong']))
